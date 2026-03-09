@@ -1,5 +1,5 @@
 """
-SwitchBot カーテン操作サーバー
+SwitchBot 操作サーバー
 MacroDroidからHTTPリクエストを受け取りSwitchBot APIを叩く
 """
 
@@ -21,6 +21,7 @@ TOKEN = os.getenv("SWITCHBOT_TOKEN")
 SECRET = os.getenv("SWITCHBOT_SECRET")
 BASE_URL = "https://api.switch-bot.com/v1.1"
 CURTAIN_ID = "E2E0085AFD7E"
+PLUG_ID = "9888E0C67982"
 PORT = 8080
 
 
@@ -43,15 +44,30 @@ def make_headers():
     }
 
 
-def send_curtain_command(command):
+def send_command(device_id, command):
     data = json.dumps({
         "command": command,
         "parameter": "default",
-        "co"
-        "mmandType": "command",
+        "commandType": "command",
     }).encode("utf-8")
     req = urllib.request.Request(
-        f"{BASE_URL}/devices/{CURTAIN_ID}/commands",
+        f"{BASE_URL}/devices/{device_id}/commands",
+        data=data,
+        headers=make_headers(),
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as res:
+        return json.loads(res.read().decode("utf-8"))
+
+
+def send_position_command(device_id, position):
+    data = json.dumps({
+        "command": "setPosition",
+        "parameter": f"0,ff,{position}",
+        "commandType": "command",
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        f"{BASE_URL}/devices/{device_id}/commands",
         data=data,
         headers=make_headers(),
         method="POST",
@@ -63,9 +79,15 @@ def send_curtain_command(command):
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/open":
-            result = send_curtain_command("turnOn")
+            result = send_command(CURTAIN_ID, "turnOn")
         elif self.path == "/close":
-            result = send_curtain_command("turnOff")
+            result = send_command(CURTAIN_ID, "turnOff")
+        elif self.path == "/half":
+            result = send_position_command(CURTAIN_ID, 50)
+        elif self.path == "/plug/on":
+            result = send_command(PLUG_ID, "turnOn")
+        elif self.path == "/plug/off":
+            result = send_command(PLUG_ID, "turnOff")
         else:
             self.send_response(404)
             self.end_headers()
